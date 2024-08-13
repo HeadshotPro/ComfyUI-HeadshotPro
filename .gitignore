@@ -4,3 +4,5 @@ __pycache__/
 .venv/
 .vscode/
 .vscode-test/
+weights/
+devfiles/
