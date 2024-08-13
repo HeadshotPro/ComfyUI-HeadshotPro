@@ -106,6 +106,85 @@ class RandomValueFromList:
             except ValueError:
                 return (choice,)  # Return as string if it's neither int nor float
 
+class DownloadFluxLora:
+    @classmethod
+    def INPUT_TYPES(cls):
+       return {
+            "required": {       
+                "url": ("STRING", {"multiline": False, "default": ""}),               
+            },
+            "optional": {
+                "force_download": ("BOOLEAN", {"default": True}),
+            }
+        }
+
+    RETURN_TYPES = (AlwaysEqualProxy("*"),)
+    OUTPUT_NODE = True
+    RETURN_NAMES = ("model_path",)
+    FUNCTION = "download_lora"
+    CATEGORY = "HeadshotPro"
+
+    def download_lora(self, url, force_download=True):
+        dest = os.path.join(os.path.dirname(__file__), "../../../models/loras")
+        # Generate a unique ID from the URL
+        url_hash = hashlib.md5(url.encode('utf-8')).hexdigest()
+        file_extension = url.split('?')[0].split('.')[-1]  # Extract file extension from URL
+
+        if file_extension == "zip":
+            file_path = f"{dest}/{url_hash}.zip"  # Use the hash in the zip file name
+        elif file_extension == "tar":
+            file_path = f"{dest}/{url_hash}.tar"  # Use the hash in the tar file name
+        else:
+            raise ValueError("Unsupported file format")
+        
+        dreambooth_model_dest = f"{dest}/{url_hash}"  # Use the hash in the model folder name
+
+        if force_download or not os.path.exists(dreambooth_model_dest):
+            if os.path.exists(dreambooth_model_dest):
+                shutil.rmtree(dreambooth_model_dest)
+            # Download the file to file_path instead of dest
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            download_weights_pget(url, file_path, unpack=True)  # Assuming you want to unpack
+            # Ensure the directory exists
+            subprocess.check_call(["mkdir", "-p", dreambooth_model_dest], close_fds=False)
+            # Extract the file based on its format
+            if file_extension == "zip":
+                subprocess.check_call(
+                    ["unzip", "-o", file_path, "-d", dreambooth_model_dest], close_fds=False
+                )
+                # Find the .safetensors file in the output/flux_train_replicate/ directory
+                safetensors_file = None
+                for root, dirs, files in os.walk(os.path.join(dreambooth_model_dest, "output/flux_train_replicate")):
+                    for file in files:
+                        if file.endswith(".safetensors"):
+                            safetensors_file = os.path.join(root, file)                            
+                            print(safetensors_file)
+                            break
+                    if safetensors_file:
+                        break
+                
+                if safetensors_file:
+                    # Move the .safetensors file up to the dest folder and rename it
+                    shutil.move(safetensors_file, os.path.join(dest, f"{url_hash}.safetensors"))
+
+                else:
+                    print("No .safetensors file found in the output/flux_train_replicate/ directory")
+                
+            # Delete the .zip file and extraction folder
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            if os.path.exists(dreambooth_model_dest):
+                shutil.rmtree(dreambooth_model_dest)
+                
+            elif file_extension == "tar":
+                subprocess.check_call(
+                    ["tar", "-xvf", file_path, "-C", dreambooth_model_dest], close_fds=False
+                )
+            print(f"File downloaded and extracted to {dreambooth_model_dest}")
+        else:
+            print(f"Model already exists at {dreambooth_model_dest}, skipping download.")
+        return (f"{url_hash}.safetensors",)
 
 class DownloadDreamboothCheckpointFromUrl:
     @classmethod
@@ -129,8 +208,7 @@ class DownloadDreamboothCheckpointFromUrl:
         dest = os.path.join(os.path.dirname(__file__), "../../../models/diffusers")
         # Generate a unique ID from the URL
         url_hash = hashlib.md5(url.encode('utf-8')).hexdigest()
-        file_extension = url.split('.')[-1]  # Extract file extension from URL
-
+       
         if file_extension == "zip":
             file_path = f"{dest}/{url_hash}.zip"  # Use the hash in the zip file name
         elif file_extension == "tar":
