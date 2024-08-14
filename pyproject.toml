@@ -1,0 +1,14 @@
+[project]
+name = "comfyui-headshotpro"
+description = "Nodes:Download Dreambooth Checkpoint, Get Random Value From List, Load Canny Pose Face, Transparent to White Background, Download Flux Lora."
+version = "1.0.0"
+license = {file = "LICENSE"}
+
+[project.urls]
+Repository = "https://github.com/HeadshotPro/ComfyUI-HeadshotPro"
+#  Used by Comfy Registry https://comfyregistry.org
+
+[tool.comfy]
+PublisherId = ""
+DisplayName = "ComfyUI-HeadshotPro"
+Icon = ""
